@@ -1,3 +1,5 @@
-flask
+Flask
 matplotlib
 numpy
+pandas
+requests

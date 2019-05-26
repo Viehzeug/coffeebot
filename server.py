@@ -2,7 +2,7 @@ import matplotlib
 matplotlib.use('Agg')
 
 from flask import Flask, request, Response
-from enum import Enum, EnumValue
+from enum import Enum
 import datetime
 import dateutil
 from dateutil import parser
@@ -168,8 +168,10 @@ class CoffeeJsonEncoder(json.JSONEncoder):
             d = o.__dict__
             d["_type"] = "User"
             return d
-        elif isinstance(o, EnumValue):
-            return {"_type": "EnumValue", "key": o.key}
+        elif isinstance(o, Role):
+            return {"_type": "Role", "key": o.value}
+        elif isinstance(o, Enum):
+            pass
         else:
             return o.__dict__
 
@@ -194,7 +196,7 @@ class CoffeeJsonDecoder(json.JSONDecoder):
             else:
                 u.teas = []
             return u
-        elif _type == "EnumValue":
+        elif _type == "Role":
             return Role(obj["key"])
         else:
             return obj
@@ -363,9 +365,9 @@ def current_state_coffee():
     now = datetime.datetime.now()
     output = {}
     for user in users.values():
-        coffees = filter(lambda x: x.month == now.month and x.year == now.year, user.coffees)
+        coffees = list(filter(lambda x: x.month == now.month and x.year == now.year, user.coffees))
         output[user.name] = len(coffees)
-    lines = [name + ": "+str(c) for (name, c) in sorted(output.items(), key=lambda (n, c): -c)]
+    lines = [name + ": "+str(c) for (name, c) in sorted(output.items(), key=lambda x: -x[1])]
     return u"\u2615\n" + "\n".join(lines)
 
 
@@ -374,9 +376,9 @@ def current_state_tea():
     now = datetime.datetime.now()
     output = {}
     for user in users.values():
-        teas = filter(lambda x: x.month == now.month and x.year == now.year, user.teas)
+        teas = list(filter(lambda x: x.month == now.month and x.year == now.year, user.teas))
         output[user.name] = len(teas)
-    lines = [name + ": " + str(t) for (name, t) in sorted(output.items(), key=lambda (n, t): -t)]
+    lines = [name + ": " + str(t) for (name, t) in sorted(output.items(), key=lambda x: -x[1])]
     return u"\U0001F375\n" + "\n".join(lines)
 
 
@@ -501,7 +503,7 @@ def execute_command(command, argument, user_id):
             if argument == "All":
                 coffees = users[u].coffees
             else:
-                coffees = filter(lambda x: x.month == argument.month and x.year == argument.year, users[u].coffees)
+                coffees = list(filter(lambda x: x.month == argument.month and x.year == argument.year, users[u].coffees))
             count = [1] * len(coffees)
             count = np.cumsum(count)
             ser = pd.Series(count, coffees)
@@ -538,7 +540,7 @@ def execute_command(command, argument, user_id):
             if argument == "All":
                 coffees = users[u].coffees
             else:
-                coffees = filter(lambda x: x.month == argument.month and x.year == argument.year, users[u].coffees)
+                coffees = list(filter(lambda x: x.month == argument.month and x.year == argument.year, users[u].coffees))
             if len(coffees) > 0:
                 any_data = True
                 for c in users[u].coffees:
@@ -586,3 +588,4 @@ if __name__ == "__main__":
     else:  # else add default user as admin and create new user list
         users[defautl_user_id] = User(default_uesr_name, Role.admin)
     app.run(port=8080, debug=False)
+    store()
